@@ -14,6 +14,21 @@ npm start                      # PORT=4000 npm start for another port
 Then open <http://localhost:3000> and hand it a dump — drop the file on the page, or
 paste the JSON straight into the box.
 
+## Hosting it
+
+There is no backend to host: `server.js` only hands out files, so the whole thing is
+a static site that runs in the browser. `npm run build` gathers it into `dist/` —
+the page, `lib/parse.js` and d3 — and anything that serves a folder will serve it.
+
+`.github/workflows/deploy.yml` publishes `dist/` to GitHub Pages on every push to
+`main`, and can also be run by hand from the Actions tab. One setting has to be
+flipped once, before the first run: **Settings → Pages → Build and deployment →
+Source → GitHub Actions**. After that the site is at
+<https://arvebjoe.github.io/homey-zigbee-visualizer/>.
+
+The page loads its assets by relative path, so it works both at the root (locally)
+and under a project subpath (on Pages) without a base-URL setting.
+
 ## Getting a dump out of Homey
 
 Homey Pro → **Settings → Zigbee → (developer page)** and save the JSON payload that
@@ -133,10 +148,13 @@ Two things worth knowing about real dumps:
 
 ```
 server.js          Express: hands out the static files, and nothing else
+build.js           Gathers the same files into dist/ for deployment
 lib/parse.js       Dump → graph model (nodes, links, paths, stats), plus the
                    secret-stripping. Runs in the browser and under Node.
 public/            Frontend: index.html, style.css, app.js (D3 v7)
 data/              Your Zigbee dumps, if you keep them here (gitignored)
+dist/              Build output (gitignored)
+.github/workflows/ deploy.yml — build and publish to GitHub Pages
 ```
 
 There is no API: `lib/parse.js` is loaded straight into the page, so the parsing and
