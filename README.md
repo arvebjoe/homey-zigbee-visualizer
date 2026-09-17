@@ -41,6 +41,16 @@ The dump never reaches the server. `npm start` serves nothing but the static pag
 the browser reads the file you drop on it, parses it and draws it, and no upload
 endpoint exists for it to be posted to. Nothing is written to disk.
 
+**And the browser enforces it.** `index.html` carries a Content-Security-Policy of
+`default-src 'none'` with `connect-src 'none'`, so the page has no way to send
+anything anywhere — fetch, XHR, WebSocket, EventSource and `sendBeacon` are all
+refused, as is loading a script from anywhere but this origin, or an image that
+could smuggle data out in a query string. So "your dump stays here" is not a promise
+you have to take on trust; open the network tab on the hosted site and watch nothing
+leave. The single relaxation is `'unsafe-inline'` for styles, because the detail
+panel writes a few inline `style` attributes for bar widths and hop colours — those
+cannot fetch anything, since `img-src` is confined to this origin as well.
+
 **The network key is removed first.** Before the dump is parsed, stored or drawn,
 every key that could let someone join or decrypt your mesh — `networkKey` and the
 link-key variants — is deleted from it. So a dump you forgot to redact carries its

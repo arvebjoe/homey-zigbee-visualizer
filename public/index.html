@@ -3,6 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  The dump is read, parsed and drawn entirely in this page. This policy is what
+  turns that from a promise into something the browser enforces: connect-src
+  'none' leaves the page no way to send anything anywhere — no fetch, no XHR,
+  no WebSocket, no beacon — and default-src 'none' closes off everything not
+  named below. The one relaxation is inline style attributes, which the detail
+  panel writes for bar widths and hop colours; they can load nothing, because
+  img-src is confined to this origin too.
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  connect-src 'none';
+  form-action 'none';
+  base-uri 'none'">
 <title>Zigbee Network Visualizer</title>
 <link rel="stylesheet" href="style.css">
 </head>
