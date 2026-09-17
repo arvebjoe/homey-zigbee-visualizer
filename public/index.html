@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zigbee Network Visualizer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>Zigbee Network</h1>
+    <span id="source" class="source"></span>
+  </div>
+  <div id="netstats" class="netstats"></div>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search name, model, address…" autocomplete="off">
+    <label class="toggle"><input type="checkbox" id="showBindings"> Bindings</label>
+    <label class="toggle"><input type="checkbox" id="showGhosts" checked> Stale routes</label>
+    <label class="toggle"><input type="checkbox" id="showLabels"> All labels</label>
+    <select id="layout" title="Layout">
+      <option value="tree">Radial tree</option>
+      <option value="force">Force mesh</option>
+    </select>
+    <button id="fit" title="Fit the whole network in view">Fit</button>
+    <button id="reload" title="Re-read the dump file">Reload</button>
+  </div>
+</header>
+
+<main>
+  <div id="graph">
+    <svg id="canvas"></svg>
+    <div class="legend">
+      <div class="legend-title">Hops from controller</div>
+      <div class="legend-row"><i class="swatch h0"></i>Controller</div>
+      <div class="legend-row"><i class="swatch h1"></i>1 hop (direct)</div>
+      <div class="legend-row"><i class="swatch h2"></i>2 hops</div>
+      <div class="legend-row"><i class="swatch h3"></i>3 hops</div>
+      <div class="legend-row"><i class="swatch h4"></i>4+ hops</div>
+      <div class="legend-sep"></div>
+      <div class="legend-title">Link quality</div>
+      <div class="legend-row"><i class="q-dot q-good"></i>Good — 95%+ TX success</div>
+      <div class="legend-row"><i class="q-dot q-fair"></i>Fair — 85–95%</div>
+      <div class="legend-row"><i class="q-dot q-weak"></i>Weak — 70–85%</div>
+      <div class="legend-row"><i class="q-dot q-bad"></i>Bad — under 70%</div>
+      <div class="legend-row"><i class="q-dot q-unknown"></i>Too little traffic to judge</div>
+      <div class="legend-note">Line thickness = traffic volume</div>
+      <div class="legend-sep"></div>
+      <div class="legend-row"><i class="shape square"></i>Router</div>
+      <div class="legend-row"><i class="shape circle"></i>End device</div>
+      <div class="legend-row"><i class="shape ghost"></i>Stale / unreachable</div>
+    </div>
+    <div id="hint" class="hint">Click a node to inspect it and trace its path back to the controller. Hover a link for its quality.</div>
+  </div>
+
+  <aside id="panel" class="panel">
+    <div class="panel-empty"><h2>Loading…</h2></div>
+  </aside>
+</main>
+
+<script src="/vendor/d3.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

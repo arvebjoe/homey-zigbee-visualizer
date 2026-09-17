@@ -1,0 +1,24 @@
+{
+  "name": "homey-zigbee-visualizer",
+  "version": "1.0.0",
+  "description": "Local web visualizer for Homey Zigbee network dumps",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arvebjoe/homey-zigbee-visualizer.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/arvebjoe/homey-zigbee-visualizer/issues"
+  },
+  "homepage": "https://github.com/arvebjoe/homey-zigbee-visualizer#readme",
+  "dependencies": {
+    "d3": "^7.9.0",
+    "express": "^5.2.1"
+  }
+}
