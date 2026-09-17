@@ -31,9 +31,26 @@ and under a project subpath (on Pages) without a base-URL setting.
 
 ## Getting a dump out of Homey
 
-Homey Pro → **Settings → Zigbee → (developer page)** and save the JSON payload that
-lists `controllerState` and `nodes`. That is exactly what this tool expects, as a
-`.json` or `.txt` file or as text on your clipboard.
+The dump comes from **Homey Developer Tools**, which is a different site from the
+Homey app and the my.homey.app web interface:
+
+> <https://tools.developer.homey.app/tools/zigbee>
+
+Scroll all the way to the bottom of that page, to **State**. The dump is the
+collapsed JSON block there — hover it and a small copy icon appears at the end of
+the line:
+
+![The State section of the Homey Developer Tools Zigbee page, with the copy icon revealed on hover](docs/homey-developer-tools-state.png)
+
+Click the icon and the whole dump is on your clipboard. From there, either paste it
+straight into the visualizer's box, or save it as a `.json` or `.txt` file and drop
+that on the page. Both take the same content; the file is only worth keeping if you
+want to compare against it later.
+
+> **While you are on that page:** the *System Information* block further up shows
+> your network key in full. It is the one thing on Homey worth treating like a
+> password, so keep it out of any screenshot or paste you share. The dump you just
+> copied contains it too — which is exactly why this tool deletes it on the way in.
 
 ## Your dump stays on your machine
 
@@ -164,6 +181,7 @@ lib/parse.js       Dump → graph model (nodes, links, paths, stats), plus the
 public/            Frontend: index.html, style.css, app.js (D3 v7)
 data/              Your Zigbee dumps, if you keep them here (gitignored)
 dist/              Build output (gitignored)
+docs/              Images used by this README
 .github/workflows/ deploy.yml — build and publish to GitHub Pages
 ```
 
