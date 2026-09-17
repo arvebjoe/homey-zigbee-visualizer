@@ -188,22 +188,13 @@ build.js           Gathers the same files into dist/ for deployment
 lib/parse.js       Dump → graph model (nodes, links, paths, stats), plus the
                    secret-stripping. Runs in the browser and under Node.
 public/            Frontend: index.html, style.css, app.js (D3 v7)
-data/              Your Zigbee dumps, if you keep them here (gitignored)
 dist/              Build output (gitignored)
 docs/              Images used by this README
 .github/workflows/ deploy.yml — build and publish to GitHub Pages
 ```
 
 There is no API: `lib/parse.js` is loaded straight into the page, so the parsing and
-the stripping happen in the browser. It also still works as a Node module if you want
-the graph model in a script:
-
-```js
-const { parseDump, stripSecrets } = require('./lib/parse');
-const dump = JSON.parse(fs.readFileSync('data/zigbee_dump.txt', 'utf8'));
-stripSecrets(dump);            // returns the names of the keys it removed
-const graph = parseDump(dump);
-```
+the stripping happen in the browser.
 
 ## Licence
 
