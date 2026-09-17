@@ -31,6 +31,7 @@ const state = {
   showGhosts: true,
   showLabels: false,
   layout: 'tree',
+  loaderPinned: false,
 };
 
 const svg = d3.select('#canvas');
@@ -51,14 +52,42 @@ svg.call(zoom).on('dblclick.zoom', null);
 
 // ---------------------------------------------------------------- data ----
 
-async function load() {
-  const res = await fetch('/api/network');
-  const graph = await res.json();
-  if (graph.error) {
-    document.getElementById('netstats').textContent = graph.error;
-    return;
+const STORAGE_KEY = 'zigbee-visualizer.dump.v1';
+const REMEMBER_KEY = 'zigbee-visualizer.remember';
+
+/**
+ * Reads the text of a dump, strips its secrets, parses it and draws it. All of
+ * it happens here in the page: the text is never sent to the server, and the
+ * only copy that outlives the tab is the one in this browser's local storage.
+ */
+function ingest(text, sourceName) {
+  let dump;
+  try {
+    dump = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`That is not valid JSON — ${err.message}`);
+  }
+  if (!dump || typeof dump !== 'object' || (!dump.nodes && !dump.controllerState)) {
+    throw new Error('No "nodes" or "controllerState" in there — that does not look like a Homey Zigbee dump.');
   }
 
+  // Before anything else, and before any copy of the dump is kept: drop the
+  // network key, so a dump the user forgot to redact carries it no further.
+  const stripped = ZigbeeParse.stripSecrets(dump);
+
+  const graph = ZigbeeParse.parseDump(dump);
+  graph.meta.source = sourceName;
+
+  // Store before drawing: the dump is known good by now, and trouble in the
+  // renderer should not also cost the user their copy of it.
+  const storeError = rememberBox.checked ? remember(dump, sourceName, stripped) : (forget(), null);
+
+  show(graph);
+  return { stripped, storeError };
+}
+
+/** Hands a freshly parsed graph to the rest of the app. */
+function show(graph) {
   // Keep positions across reloads so the layout does not jump around.
   const prev = state.byAddr;
   state.graph = graph;
@@ -70,10 +99,120 @@ async function load() {
   }
 
   document.getElementById('source').textContent = graph.meta.source || '';
+
   renderStats();
   render();
   if (state.selected && state.byAddr.has(state.selected)) select(state.selected);
   else renderOverview();
+}
+
+// ------------------------------------------------------------- storage ----
+// The dump lives in localStorage, which is per-origin and stays on this
+// machine. It is already stripped of its secrets by the time it gets here.
+
+function remember(dump, sourceName, stripped) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 1, name: sourceName, savedAt: Date.now(), stripped, dump,
+    }));
+    return null;
+  } catch (err) {
+    // Almost always the ~5 MB quota. The graph is drawn either way.
+    forget();
+    return 'Too big for this browser’s storage, so it is not kept — you will have to load it again after a refresh.';
+  }
+}
+
+function restore() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  } catch (err) { /* corrupt entry — fall through and drop it */ }
+  if (!saved || !saved.dump) return false;
+
+  try {
+    ZigbeeParse.stripSecrets(saved.dump); // belt and braces: it was stripped before it was stored
+    const graph = ZigbeeParse.parseDump(saved.dump);
+    graph.meta.source = saved.name;
+    show(graph);
+    return true;
+  } catch (err) {
+    forget();
+    return false;
+  }
+}
+
+function forget() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (err) { /* nothing to do */ }
+}
+
+// -------------------------------------------------------------- loading ----
+
+const loader = document.getElementById('loader');
+const dropzone = document.getElementById('dropzone');
+const pasteBox = document.getElementById('pasteBox');
+const loaderMsg = document.getElementById('loaderMsg');
+const rememberBox = document.getElementById('remember');
+
+/** `pinned` = opened deliberately, so a passing drag cannot close it again. */
+function openLoader(pinned) {
+  if (pinned) state.loaderPinned = true;
+  loader.hidden = false;
+  document.getElementById('loaderClose').hidden = !state.graph;
+  document.getElementById('forget').hidden = !hasStoredDump();
+}
+
+function closeLoader() {
+  if (!state.graph) return; // nothing to go back to yet
+  state.loaderPinned = false;
+  loader.hidden = true;
+  dropzone.classList.remove('over');
+  note('');
+}
+
+function hasStoredDump() {
+  try { return Boolean(localStorage.getItem(STORAGE_KEY)); } catch (err) { return false; }
+}
+
+/** A message inside the loader card — errors and warnings live here. */
+function note(text, kind) {
+  loaderMsg.textContent = text || '';
+  loaderMsg.className = `loader-msg ${kind || ''}`;
+  loaderMsg.hidden = !text;
+}
+
+/** A passing message over the graph, reusing the hint bar. */
+const HINT_TEXT = document.getElementById('hint').textContent;
+let hintTimer;
+function toast(text, kind) {
+  const hint = document.getElementById('hint');
+  clearTimeout(hintTimer);
+  hint.textContent = text;
+  hint.className = `hint ${kind || ''}`;
+  hintTimer = setTimeout(() => { hint.textContent = HINT_TEXT; hint.className = 'hint'; }, 8000);
+}
+
+function submit(text, sourceName) {
+  if (!String(text || '').trim()) return note('Nothing to read there yet.', 'bad');
+  let result;
+  try {
+    result = ingest(text, sourceName);
+  } catch (err) {
+    openLoader(true);
+    return note(err.message, 'bad');
+  }
+  pasteBox.value = '';
+  closeLoader();
+  if (result.storeError) toast(result.storeError, 'warn');
+  else if (result.stripped.length) toast(`Network key removed from ${sourceName} — it is never stored or drawn.`, 'ok');
+}
+
+function readFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => submit(String(reader.result), file.name);
+  reader.onerror = () => { openLoader(true); note(`Could not read ${file.name}.`, 'bad'); };
+  reader.readAsText(file);
 }
 
 function renderStats() {
@@ -259,11 +398,20 @@ function layout(nodes, links) {
   drawRings(ringRadius, maxHops);
 }
 
-/** Faint guide rings so you can read the hop level straight off the picture. */
+/**
+ * Faint guide rings so you can read the hop level straight off the picture.
+ * Only the tree layout earns them: there a node's ring *is* its hop count. The
+ * force layout only pulls towards those radii, so the rings would be drawing
+ * lines the nodes do not actually sit on — clutter behind the mesh.
+ */
 function drawRings(ringRadius, maxHops) {
+  if (state.layout !== 'tree') {
+    ringLayer.selectAll('*').remove();
+    return;
+  }
   const cx = width / 2;
   const cy = height / 2;
-  const stretch = state.layout === 'tree' ? stretchFactor() : 1;
+  const stretch = stretchFactor();
   const data = d3.range(1, maxHops + 1).map((k) => ({ k, r: ringRadius[k] }));
 
   ringLayer.selectAll('ellipse').data(data, (d) => d.k).join('ellipse')
@@ -369,18 +517,22 @@ function applyHighlight() {
   const sel = state.selected != null ? state.byAddr.get(state.selected) : null;
   const onPath = new Set(sel?.path || []);
   const pathLinks = pathLinkSet(sel);
+  // A search with nothing selected fades everything that does not match, so a
+  // couple of hits stand out in a mesh of sixty rather than being two slightly
+  // differently outlined dots.
+  const searching = Boolean(state.query) && !sel;
 
   nodeLayer.selectAll('g.node')
     .classed('selected', (d) => sel && d.addr === sel.addr)
     .classed('onpath', (d) => onPath.has(d.addr))
     .classed('match', (d) => matches(d))
-    .classed('dim', (d) => (sel ? !onPath.has(d.addr) && !isNeighbor(sel, d) : false))
+    .classed('dim', (d) => (sel ? !onPath.has(d.addr) && !isNeighbor(sel, d) : searching && !matches(d)))
     .select('text')
     .attr('display', (d) => (labelVisible(d, sel, onPath) ? null : 'none'));
 
   linkLayer.selectAll('g.lnk line:last-child')
     .classed('path', (d) => pathLinks.has(linkId(d)))
-    .classed('dim', (d) => sel && !pathLinks.has(linkId(d)));
+    .classed('dim', (d) => (sel ? !pathLinks.has(linkId(d)) : searching));
 }
 
 /**
@@ -714,9 +866,76 @@ document.getElementById('layout').addEventListener('change', (e) => {
   render();
 });
 document.getElementById('fit').addEventListener('click', fitToView);
-document.getElementById('reload').addEventListener('click', load);
+document.getElementById('open').addEventListener('click', () => openLoader(true));
 
 window.addEventListener('resize', () => { if (state.graph) render(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearSelection(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!loader.hidden) closeLoader();
+  else clearSelection();
+});
 
-load();
+// ------------------------------------------------------- loading the dump --
+
+document.getElementById('loaderClose').addEventListener('click', closeLoader);
+loader.addEventListener('click', (e) => { if (e.target === loader) closeLoader(); });
+
+const fileInput = document.getElementById('fileInput');
+document.getElementById('pickFile').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  readFile(fileInput.files[0]);
+  fileInput.value = ''; // so picking the same file twice still fires
+});
+
+document.getElementById('usePaste').addEventListener('click', () => submit(pasteBox.value, 'pasted JSON'));
+pasteBox.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(pasteBox.value, 'pasted JSON');
+});
+pasteBox.addEventListener('input', () => note(''));
+
+rememberBox.addEventListener('change', () => {
+  try { localStorage.setItem(REMEMBER_KEY, rememberBox.checked ? 'yes' : 'no'); } catch (err) { /* ignore */ }
+  if (!rememberBox.checked) {
+    forget();
+    document.getElementById('forget').hidden = true;
+  }
+});
+
+document.getElementById('forget').addEventListener('click', () => {
+  forget();
+  document.getElementById('forget').hidden = true;
+  note('Removed from this browser’s storage.', 'ok');
+});
+
+// Dragging a file anywhere over the window opens the drop zone; letting go
+// outside of a drop closes it again, unless it was opened on purpose.
+const dragHasFile = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+let dragDepth = 0;
+
+window.addEventListener('dragenter', (e) => {
+  if (!dragHasFile(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  openLoader();
+  dropzone.classList.add('over');
+});
+window.addEventListener('dragover', (e) => { if (dragHasFile(e)) e.preventDefault(); });
+window.addEventListener('dragleave', (e) => {
+  if (!dragHasFile(e) || --dragDepth > 0) return;
+  dragDepth = 0;
+  dropzone.classList.remove('over');
+  if (!state.loaderPinned) closeLoader();
+});
+window.addEventListener('drop', (e) => {
+  if (!dragHasFile(e)) return;
+  e.preventDefault(); // otherwise the browser navigates away to the file
+  dragDepth = 0;
+  dropzone.classList.remove('over');
+  openLoader(true);
+  readFile(e.dataTransfer.files[0]);
+});
+
+// ----------------------------------------------------------------- boot ----
+
+try { rememberBox.checked = localStorage.getItem(REMEMBER_KEY) !== 'no'; } catch (err) { /* ignore */ }
+if (!restore()) openLoader(true);

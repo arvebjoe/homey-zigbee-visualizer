@@ -10,7 +10,8 @@
 <header class="topbar">
   <div class="brand">
     <span class="dot"></span>
-    <h1>Zigbee Network</h1>
+    <h1>Homey Zigbee Visualizer</h1>
+    <button id="open" title="Load another dump">Load…</button>
     <span id="source" class="source"></span>
   </div>
   <div id="netstats" class="netstats"></div>
@@ -24,7 +25,6 @@
       <option value="force">Force mesh</option>
     </select>
     <button id="fit" title="Fit the whole network in view">Fit</button>
-    <button id="reload" title="Re-read the dump file">Reload</button>
   </div>
 </header>
 
@@ -55,11 +55,45 @@
   </div>
 
   <aside id="panel" class="panel">
-    <div class="panel-empty"><h2>Loading…</h2></div>
+    <div class="panel-empty"><h2>No dump loaded</h2></div>
   </aside>
 </main>
 
+<!-- Drop zone / paste box. Shown on start until a dump is loaded, and again
+     whenever a file is dragged anywhere over the window. -->
+<div id="loader" class="loader" hidden>
+  <div class="loader-card">
+    <button id="loaderClose" class="loader-close" type="button" title="Close (Esc)" hidden>&times;</button>
+    <h2>Load a Zigbee dump</h2>
+    <p class="loader-sub">
+      Your dump never leaves this browser: it is read, stripped of its network key
+      and drawn here. Nothing is uploaded, nothing is written to disk.
+    </p>
+
+    <div id="dropzone" class="dropzone">
+      <strong>Drop your dump here</strong>
+      <span>a <code>.json</code> or <code>.txt</code> file</span>
+      <button id="pickFile" type="button">Choose a file…</button>
+      <input id="fileInput" type="file" accept=".json,.txt,application/json,text/plain" hidden>
+    </div>
+
+    <div class="loader-or"><span>or paste the JSON</span></div>
+    <textarea id="pasteBox" spellcheck="false" placeholder='{ "controllerState": { … }, "nodes": { … } }'></textarea>
+
+    <div class="loader-actions">
+      <label class="toggle" title="Keeps the dump in this browser's local storage, so it is still here after a reload">
+        <input type="checkbox" id="remember" checked> Remember in this browser
+      </label>
+      <button id="forget" class="ghost-btn" type="button" hidden>Forget stored dump</button>
+      <button id="usePaste" class="primary-btn" type="button">Visualize</button>
+    </div>
+
+    <p id="loaderMsg" class="loader-msg" hidden></p>
+  </div>
+</div>
+
 <script src="/vendor/d3.min.js"></script>
+<script src="/lib/parse.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

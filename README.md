@@ -8,29 +8,43 @@ controller uses to reach each one.
 
 ```bash
 npm install
-# save your Homey Zigbee dump into data/ first — see below
-npm start
+npm start                      # PORT=4000 npm start for another port
 ```
 
-Then open <http://localhost:3000>. `npm start` picks up the newest dump in `data/`.
-
-Dumps are not kept in this repo: they list every device in your home, its IEEE
-address and your network ids, so `data/` is gitignored.
-
-To point at a dump somewhere else:
-
-```bash
-node server.js path/to/another_dump.txt
-PORT=4000 node server.js       # or pick another port
-```
-
-The dump is re-read on every request, so after replacing the file you only need the
-**Reload** button in the toolbar.
+Then open <http://localhost:3000> and hand it a dump — drop the file on the page, or
+paste the JSON straight into the box.
 
 ## Getting a dump out of Homey
 
 Homey Pro → **Settings → Zigbee → (developer page)** and save the JSON payload that
-lists `controllerState` and `nodes`. That is exactly the file this tool expects.
+lists `controllerState` and `nodes`. That is exactly what this tool expects, as a
+`.json` or `.txt` file or as text on your clipboard.
+
+## Your dump stays on your machine
+
+The dump never reaches the server. `npm start` serves nothing but the static page;
+the browser reads the file you drop on it, parses it and draws it, and no upload
+endpoint exists for it to be posted to. Nothing is written to disk.
+
+**The network key is removed first.** Before the dump is parsed, stored or drawn,
+every key that could let someone join or decrypt your mesh — `networkKey` and the
+link-key variants — is deleted from it. So a dump you forgot to redact carries its
+key no further than the drop zone: not into the stored copy, not into the panel, not
+into a screenshot you send someone.
+
+Everything else in a dump is still your device inventory and IEEE addresses, so
+treat it accordingly.
+
+## Keeping a dump between visits
+
+**Remember in this browser** (on by default) keeps the stripped dump in this
+browser's `localStorage`, so reopening the page brings your network straight back.
+It is per-browser and per-machine: it is not synced, not shared between browsers,
+and never sent anywhere. Untick it to keep the dump for this tab only, or use
+**Forget stored dump** to clear it.
+
+Dumps in `data/` are gitignored, so anything you keep next to the repo stays out
+of git.
 
 ## What you see
 
@@ -60,15 +74,16 @@ jump to that device. `Esc` or a click on the background clears the selection.
 | Control | What it does |
 | --- | --- |
 | Weak links | Count of hops graded weak or bad — the headline health number |
-| Search | Highlights devices matching name, model, manufacturer or address |
+| Search | Picks out devices matching name, model, manufacturer or address, and fades the rest of the mesh back |
 | Bindings | Overlays cluster-level bindings (dashed) on top of the routing links |
 | Stale routes | Shows routing-table entries whose device is no longer in the node list |
 | All labels | Names every device instead of only the controller and routers |
-| Layout | *Radial tree* (deterministic, one ring per hop) or *Force mesh* (physics, draggable nodes) |
+| Layout | *Radial tree* (deterministic, one ring per hop, with guide rings) or *Force mesh* (physics, draggable nodes, no rings) |
 | Fit | Zooms so the whole network is back in view |
-| Reload | Re-reads the dump file from disk |
+| Load… | Next to the title — opens the drop zone again, to swap in another dump |
 
-Scroll to zoom, drag the background to pan.
+Scroll to zoom, drag the background to pan. Dragging a dump anywhere over the window
+opens the drop zone, so swapping dumps never needs the toolbar.
 
 ## How link quality is measured
 
@@ -117,11 +132,20 @@ Two things worth knowing about real dumps:
 ## Layout
 
 ```
-server.js          Express server: static files + /api/network
-lib/parse.js       Dump → graph model (nodes, links, paths, stats)
+server.js          Express: hands out the static files, and nothing else
+lib/parse.js       Dump → graph model (nodes, links, paths, stats), plus the
+                   secret-stripping. Runs in the browser and under Node.
 public/            Frontend: index.html, style.css, app.js (D3 v7)
-data/              Your Zigbee dumps
+data/              Your Zigbee dumps, if you keep them here (gitignored)
 ```
 
-`GET /api/network` returns the parsed model, so you can also use it as a plain JSON
-API from a script.
+There is no API: `lib/parse.js` is loaded straight into the page, so the parsing and
+the stripping happen in the browser. It also still works as a Node module if you want
+the graph model in a script:
+
+```js
+const { parseDump, stripSecrets } = require('./lib/parse');
+const dump = JSON.parse(fs.readFileSync('data/zigbee_dump.txt', 'utf8'));
+stripSecrets(dump);            // returns the names of the keys it removed
+const graph = parseDump(dump);
+```
