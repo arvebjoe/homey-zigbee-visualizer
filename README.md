@@ -90,6 +90,8 @@ of git.
 
 ## What you see
 
+![The whole network: the controller at the centre, one ring per hop, link quality as the colour of every line](docs/network-overview.png)
+
 **The graph.** The controller sits in the middle, and every ring outward is one more
 hop. Colour encodes the hop count, shape encodes the role: a star for the
 controller, squares for routers (mains-powered devices that forward traffic) and
@@ -110,6 +112,13 @@ identity and firmware, raw radio counters, capabilities, endpoint clusters and
 bindings. The route is highlighted in the graph
 at the same time, and everything else fades back. Click a hop in the route list to
 jump to that device. `Esc` or a click on the background clears the selection.
+
+![A struggling device selected: its two-hop route lit up back to the controller, the rest of the mesh faded, and the panel showing 6% of 48 transmissions getting through](docs/node-detail.png)
+
+The one above is the worst link in that network: a sensor two hops out, getting 6% of
+its frames through on the first try — 45 of 48 transmissions failed. Its relay is
+fine at 99%, so the problem is the last hop, not the branch. That is the kind of
+thing the picture is for.
 
 **Toolbar.**
 
