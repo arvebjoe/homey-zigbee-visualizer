@@ -1,0 +1,2 @@
+# core.autocrlf is on; never let it touch a binary.
+*.ico binary
