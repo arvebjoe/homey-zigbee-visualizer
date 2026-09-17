@@ -2,6 +2,7 @@
   "name": "homey-zigbee-visualizer",
   "version": "1.0.0",
   "description": "Local web visualizer for Homey Zigbee network dumps",
+  "license": "MIT",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

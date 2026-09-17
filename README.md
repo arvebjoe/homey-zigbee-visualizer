@@ -177,3 +177,10 @@ const dump = JSON.parse(fs.readFileSync('data/zigbee_dump.txt', 'utf8'));
 stripSecrets(dump);            // returns the names of the keys it removed
 const graph = parseDump(dump);
 ```
+
+## Licence
+
+[MIT](LICENSE) — use it, fork it, host your own copy.
+
+The one bundled dependency is [d3](https://d3js.org) (ISC); its copyright notice
+travels in `vendor/d3.min.js`.
