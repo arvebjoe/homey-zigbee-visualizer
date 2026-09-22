@@ -32,6 +32,8 @@ const state = {
   showLabels: false,
   layout: 'tree',
   loaderPinned: false,
+  panelTab: 'quality',
+  trafficScale: 'tx',
 };
 
 const svg = d3.select('#canvas');
@@ -600,11 +602,22 @@ function clearSelection() {
   renderOverview();
 }
 
+const PANEL_TABS = [['quality', 'Link quality'], ['traffic', 'Traffic']];
+
+/** With nothing selected, the panel shows a tab bar over the active tab. */
+function renderOverview() {
+  if (state.panelTab === 'traffic') renderTrafficTab();
+  else renderQualityTab();
+  document.getElementById('panel').insertAdjacentHTML('afterbegin', `
+    <div class="tabs">${PANEL_TABS.map(([id, label]) => `<button type="button"
+      class="tab${state.panelTab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`).join('')}</div>`);
+}
+
 /**
  * With nothing selected the panel is more useful as a worst-first list of
  * links than as an empty placeholder — that is where a mesh problem lives.
  */
-function renderOverview() {
+function renderQualityTab() {
   const links = state.graph.links
     .filter((l) => l.kind === 'route' && l.grade !== 'unknown')
     .sort((a, b) => a.rate - b.rate)
@@ -638,6 +651,52 @@ function renderOverview() {
       every device has exactly one parent relay, that success rate describes its link to that
       parent. A router's counters also include traffic it forwards to its own children, so
       read a router's grade as "this branch is struggling" rather than one exact hop.</p>`)}`;
+
+  document.getElementById('panel').querySelectorAll('[data-addr]').forEach((el) => {
+    el.addEventListener('click', () => select(Number(el.dataset.addr)));
+  });
+}
+
+/**
+ * The twelve busiest devices by messages sent. All bars share one scale — the
+ * highest TX or RX in the list, whichever state.trafficScale picks — so they
+ * compare across rows; a bar past that scale stops at the edge.
+ */
+function renderTrafficTab() {
+  const top = state.graph.nodes
+    .filter((n) => !n.isCoordinator && n.stats?.tx > 0)
+    .sort((a, b) => b.stats.tx - a.stats.tx)
+    .slice(0, 12);
+  const max = Math.max(1, ...top.map((n) => n.stats[state.trafficScale]));
+  const width = (v) => Math.min(100, (v / max) * 100);
+
+  const rows = top.map((n) => {
+    const s = n.stats;
+    const pct = s.successRate == null ? '—' : `${Math.round(s.successRate * 100)}%`;
+    const errPct = Math.min(100, (s.txError / s.tx) * 100);
+    return `<li data-addr="${n.addr}">
+      <span class="tr-name">${escapeHtml(shortName(n.name))}</span>
+      <span class="tr-bar tr-tx"><span style="width:${width(s.tx)}%"><span class="tr-err" style="width:${errPct}%"></span></span>
+        <span class="tr-val">${s.tx.toLocaleString()} / ${s.txError.toLocaleString()}</span></span>
+      <span class="tr-pct">(${pct})</span>
+      <span class="tr-bar tr-rx"><span style="width:${width(s.rx)}%"></span>
+        <span class="tr-val">${s.rx.toLocaleString()}</span></span>
+    </li>`;
+  }).join('');
+
+  const scaleBtn = (id) => `<button type="button" data-scale="${id}"
+    class="${state.trafficScale === id ? 'active' : ''}">${id.toUpperCase()}</button>`;
+
+  document.getElementById('panel').innerHTML = `
+    <div class="p-head">
+      <h2>Traffic</h2>
+      <div class="sub">The twelve busiest devices by messages sent. Click one to trace it.</div>
+    </div>
+    <div class="tr-scale">Scale to highest ${scaleBtn('tx')} / ${scaleBtn('rx')}</div>
+    ${section('Top 12 by TX', `<ul class="traffic">${rows}</ul>`)}
+    ${section('How to read this', `<p class="note">Green is TX with its errors in red,
+      blue is RX. All bars share the scale of the highest TX or RX in the list, as picked
+      above; a bar past that scale stops at the edge.</p>`)}`;
 
   document.getElementById('panel').querySelectorAll('[data-addr]').forEach((el) => {
     el.addEventListener('click', () => select(Number(el.dataset.addr)));
@@ -846,6 +905,18 @@ function escapeHtml(str) {
 // ------------------------------------------------------------ interaction --
 
 svg.on('click', clearSelection);
+
+document.getElementById('panel').addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-tab]');
+  const scale = e.target.closest('[data-scale]');
+  if (tab && tab.dataset.tab !== state.panelTab) {
+    state.panelTab = tab.dataset.tab;
+    renderOverview();
+  } else if (scale && scale.dataset.scale !== state.trafficScale) {
+    state.trafficScale = scale.dataset.scale;
+    renderOverview();
+  }
+});
 
 document.getElementById('search').addEventListener('input', (e) => {
   state.query = e.target.value.trim();

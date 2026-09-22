@@ -291,6 +291,44 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 
 .route li .wl-rate { font-size: 11px; }
 
+
+/* ---------- panel tabs ---------- */
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.tab {
+  background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  color: var(--text-dim); font: inherit; font-size: 12px; padding: 4px 10px 8px; cursor: pointer;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ---------- traffic ---------- */
+.traffic { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+.traffic li {
+  display: grid; grid-template-columns: 100px 1fr; gap: 3px 10px; align-items: center;
+  padding: 6px 0; cursor: pointer;
+}
+.traffic li + li { border-top: 1px solid var(--border); }
+.traffic li:hover .tr-name { color: var(--accent); }
+.tr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-pct { color: var(--text-dim); font-size: 10px; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.tr-bar { position: relative; height: 14px; border-radius: 3px; background: var(--bg-elev-2); overflow: hidden; }
+.tr-bar > span:first-child { display: block; height: 100%; }
+.tr-tx > span:first-child { background: var(--q-good); }
+.tr-rx > span:first-child { background: var(--h2); }
+.tr-err { display: block; height: 100%; background: var(--q-bad); }
+.tr-val {
+  position: absolute; left: 6px; top: 0; line-height: 14px; font-size: 10px; white-space: nowrap;
+  color: var(--text); font-variant-numeric: tabular-nums; text-shadow: 0 0 3px #000, 0 0 2px #000;
+}
+
+.tr-scale { margin: 12px 0 18px; font-size: 11px; color: var(--text-dim); }
+.tr-scale button {
+  background: none; border: 0; padding: 0 2px; margin: 0;
+  font: inherit; color: var(--text-dim); cursor: pointer;
+}
+.tr-scale button:hover { color: var(--accent); }
+.tr-scale button.active { font-weight: 700; color: var(--text); }
+
 /* ---------- dump loader ---------- */
 .loader {
   position: fixed; inset: 0; z-index: 50;
