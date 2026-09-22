@@ -51,8 +51,8 @@
 <main>
   <div id="graph">
     <svg id="canvas"></svg>
-    <div class="legend">
-      <div class="legend-title">Hops from controller</div>
+    <div class="legend collapsible" id="legend" data-collapse="up">
+      <div class="legend-title collapse-keep">Hops from controller<button class="collapse-toggle" type="button" aria-expanded="true">▲</button></div>
       <div class="legend-row"><i class="swatch h0"></i>Controller</div>
       <div class="legend-row"><i class="swatch h1"></i>1 hop (direct)</div>
       <div class="legend-row"><i class="swatch h2"></i>2 hops</div>
@@ -74,8 +74,11 @@
     <div id="hint" class="hint">Click a node to inspect it and trace its path back to the controller. Hover a link for its quality.</div>
   </div>
 
-  <aside id="panel" class="panel">
-    <div class="panel-empty"><h2>No dump loaded</h2></div>
+  <aside class="panel-wrap collapsible" id="sidepanel" data-collapse="right">
+    <button class="collapse-toggle collapse-keep" type="button" aria-expanded="true">&gt;&gt;</button>
+    <div id="panel" class="panel">
+      <div class="panel-empty"><h2>No dump loaded</h2></div>
+    </div>
   </aside>
 </main>
 

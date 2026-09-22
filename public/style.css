@@ -118,6 +118,18 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 .shape.square { border-radius: 2px; }
 .shape.ghost { border-radius: 50%; background: none; border: 1px dashed var(--ghost); }
 
+/* ---------- collapsible panes ---------- */
+.collapse-toggle {
+  position: absolute; top: 8px; right: 6px;
+  background: none; border: 0; margin: 0; padding: 0 2px;
+  font: inherit; font-size: 9px; line-height: 1;
+  color: var(--text-dim); cursor: pointer;
+}
+.collapse-toggle:hover { color: var(--accent); }
+.collapsible.collapsed > :not(.collapse-keep) { display: none; }
+.collapsible.collapsed > .collapse-keep { margin-bottom: 0; }
+.collapsible.collapsed .collapse-toggle { position: static; margin-left: 8px; }
+
 /* ---------- graph elements ---------- */
 .ring { fill: none; stroke: #1e2633; stroke-width: 1px; }
 .ring-label {
@@ -170,9 +182,21 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 .tooltip .t-meta { color: var(--text-dim); }
 
 /* ---------- side panel ---------- */
+.panel-wrap { position: relative; flex: 0 0 360px; display: flex; min-height: 0; }
 .panel {
-  flex: 0 0 360px; background: var(--bg-elev); border-left: 1px solid var(--border);
+  flex: 1 1 auto; min-width: 0; background: var(--bg-elev); border-left: 1px solid var(--border);
   overflow-y: auto; padding: 18px;
+}
+#sidepanel > .collapse-toggle {
+  top: 22px; left: 3px; right: auto; z-index: 5;
+  font-size: 12px; letter-spacing: -3px;
+}
+#sidepanel.collapsed { flex-basis: 0; }
+#sidepanel.collapsed > .collapse-toggle {
+  position: absolute; top: 14px; left: auto; right: 10px; margin: 0;
+  padding: 6px 10px 6px 7px; border-radius: 20px;
+  background: rgba(22,27,34,.9); border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0,0,0,.45);
 }
 .panel-empty { color: var(--text-dim); }
 .panel-empty h2 { font-size: 14px; color: var(--text); margin: 0 0 8px; }

@@ -868,6 +868,37 @@ document.getElementById('layout').addEventListener('change', (e) => {
 document.getElementById('fit').addEventListener('click', fitToView);
 document.getElementById('open').addEventListener('click', () => openLoader(true));
 
+
+// Panes marked .collapsible fold down to their .collapse-keep part (e.g. the
+// title). data-collapse says which way they fold; the state is remembered per id.
+const COLLAPSE_KEY = 'zigbee-visualizer.collapsed';
+const COLLAPSE_ICONS = { up: ['▲', '▼'], down: ['▼', '▲'], left: ['<<', '>>'], right: ['>>', '<<'] };
+
+function readCollapsed() {
+  try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch (err) { return {}; }
+}
+
+function setCollapsed(pane, collapsed) {
+  const [open, closed] = COLLAPSE_ICONS[pane.dataset.collapse] || COLLAPSE_ICONS.up;
+  const toggle = pane.querySelector('.collapse-toggle');
+  pane.classList.toggle('collapsed', collapsed);
+  toggle.textContent = collapsed ? closed : open;
+  toggle.title = collapsed ? 'Show' : 'Hide';
+  toggle.setAttribute('aria-expanded', String(!collapsed));
+}
+
+document.querySelectorAll('.collapsible').forEach((pane) => {
+  setCollapsed(pane, !!readCollapsed()[pane.id]);
+  pane.querySelector('.collapse-toggle').addEventListener('click', () => {
+    const collapsed = !pane.classList.contains('collapsed');
+    setCollapsed(pane, collapsed);
+    if (state.graph && ['left', 'right'].includes(pane.dataset.collapse)) render();
+    const saved = readCollapsed();
+    saved[pane.id] = collapsed;
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(saved)); } catch (err) { /* ignore */ }
+  });
+});
+
 window.addEventListener('resize', () => { if (state.graph) render(); });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
