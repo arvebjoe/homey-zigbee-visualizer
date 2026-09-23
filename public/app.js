@@ -591,6 +591,9 @@ function hideTooltip() { tooltip.style('opacity', 0); }
 
 function select(addr) {
   state.selected = addr;
+  // Picking a node asks for its details, so a folded-away panel comes back.
+  const side = document.getElementById('sidepanel');
+  if (side.classList.contains('collapsed')) toggleCollapsed(side, false);
   document.getElementById('hint').style.opacity = 0;
   applyHighlight();
   renderPanel(state.byAddr.get(addr));
@@ -672,7 +675,7 @@ function renderTrafficTab() {
 
   const rows = top.map((n) => {
     const s = n.stats;
-    const pct = s.successRate == null ? '—' : `${Math.round(s.successRate * 100)}%`;
+    const pct = `${Math.round(s.successRate * 100)}%`; // never null: tx > 0 above
     const errPct = Math.min(100, (s.txError / s.tx) * 100);
     return `<li data-addr="${n.addr}">
       <span class="tr-name">${escapeHtml(shortName(n.name))}</span>
@@ -943,7 +946,7 @@ document.getElementById('open').addEventListener('click', () => openLoader(true)
 // Panes marked .collapsible fold down to their .collapse-keep part (e.g. the
 // title). data-collapse says which way they fold; the state is remembered per id.
 const COLLAPSE_KEY = 'zigbee-visualizer.collapsed';
-const COLLAPSE_ICONS = { up: ['▲', '▼'], down: ['▼', '▲'], left: ['<<', '>>'], right: ['>>', '<<'] };
+const COLLAPSE_ICONS = { up: ['▲', '▼'], down: ['▼', '▲'], right: ['>>', '<<'] };
 
 function readCollapsed() {
   try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch (err) { return {}; }
@@ -958,15 +961,19 @@ function setCollapsed(pane, collapsed) {
   toggle.setAttribute('aria-expanded', String(!collapsed));
 }
 
+/** Folds or unfolds a pane, remembers it, and redraws if the graph changed width. */
+function toggleCollapsed(pane, collapsed) {
+  setCollapsed(pane, collapsed);
+  if (state.graph && pane.dataset.collapse === 'right') render();
+  const saved = readCollapsed();
+  saved[pane.id] = collapsed;
+  try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(saved)); } catch (err) { /* ignore */ }
+}
+
 document.querySelectorAll('.collapsible').forEach((pane) => {
   setCollapsed(pane, !!readCollapsed()[pane.id]);
   pane.querySelector('.collapse-toggle').addEventListener('click', () => {
-    const collapsed = !pane.classList.contains('collapsed');
-    setCollapsed(pane, collapsed);
-    if (state.graph && ['left', 'right'].includes(pane.dataset.collapse)) render();
-    const saved = readCollapsed();
-    saved[pane.id] = collapsed;
-    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(saved)); } catch (err) { /* ignore */ }
+    toggleCollapsed(pane, !pane.classList.contains('collapsed'));
   });
 });
 
